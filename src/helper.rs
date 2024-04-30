@@ -1,14 +1,16 @@
 // pub mod helper;
 
-pub fn read_u16(buf: &[u8], start: usize) -> u16 {
+pub fn read_u16(buf: &[u8], offset:&mut  usize) -> u16 {
     let mut byte_arr: [u8; 2] = [0u8; 2];
-    byte_arr.copy_from_slice(&buf[start..start+2]);
+	*offset+=2;
+    byte_arr.copy_from_slice(&buf[*offset-2..*offset]);
     u16::from_be_bytes(byte_arr)
 }
 
-pub fn read_u32(buf: &[u8], start: usize) -> u32 {
+pub fn read_u32(buf: &[u8],offset: &mut usize) -> u32 {
     let mut byte_arr: [u8; 4] = [0u8; 4];
-    byte_arr.copy_from_slice(&buf[start..start+4]);
+	*offset+=4;
+    byte_arr.copy_from_slice(&buf[*offset-4..*offset]);
     u32::from_be_bytes(byte_arr)
 }
 
