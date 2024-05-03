@@ -265,13 +265,13 @@ impl Record {
         for c in &self.body {
             match c {
                 Column::Blob(b) => {
-                    print!("blob {}", String::from_utf8(b.data.clone()).unwrap())
+                    println!("blob {}", String::from_utf8(b.data.clone()).unwrap())
                 }
                 Column::Text(b) => {
-                    print!("blob {}", String::from_utf8(b.data.clone()).unwrap())
+                    println!("blob {}", String::from_utf8(b.data.clone()).unwrap())
                 }
                 x => {
-                    print!("{:?}", x);
+                    println!("{:?}", x);
                 }
             }
         }
@@ -504,18 +504,26 @@ fn main() {
     read_first_page(&mut f);
     read_page(&mut f, 2);
     let mut cells: Vec<TableBTreeLeafCell> = vec![];
-    read_table(&mut f, 2, &mut cells);
+    // read_table(&mut f, 2, &mut cells);
     println!("Hello, world!");
-    println!("Hello, world! {}", cells.len());
-    let mut i = 0;
-    for cell in cells {
-        let record = Record::new(&cell.payload);
-        if i % 1000 == 0 {
-        	println!("cell row_id {}, cell data {:?}", cell.row_id, record.body)
-        }
-        i += 1;
-    }
-    read_page(&mut f, 3224);
+    // println!("Hello, world! {}", cells.len());
+    // let mut i = 0;
+    // for cell in cells {
+    //     let record = Record::new(&cell.payload);
+    //     if i % 1000 == 0 {
+    //     	println!("cell row_id {}, cell data {:?}", cell.row_id, record.body)
+    //     }
+    //     i += 1;
+    // }
+	let key = 5;
+	let res = find_by_primary_key(&mut f, 2, key);
+	if let Some(c) = res {
+		Record::new(&c.payload).print();
+	} else {
+		println!("not found key = {}", key);
+	}
+
+    // read_page(&mut f, 3224);
     // let testval: [u8; 9] = [0b11000000, 0b10000000, 0b10000000, 0b10000000, 0b10000000, 0b10000000, 0b10000000, 0b10000000, 0b10000000];
     // println!("{}", testval[0]);
     // let mut result: u64 = 0;
@@ -596,4 +604,29 @@ fn read_table(f: &mut File, root_page: u32, cells: &mut Vec<TableBTreeLeafCell>)
         }
 		_ => { panic!("expected table page, found index page"); }
     }
+}
+
+fn find_by_primary_key(f: &mut File, root_page: u32, key: u64) -> Option<TableBTreeLeafCell>{
+	let root = read_page(f, root_page as usize - 1);
+    match root {
+        Page::TableBTreeLeafPage(p) => {
+            for cell in p.cells {
+                if cell.row_id == key {
+					return Some(cell)
+				} 
+            }
+			None
+        }
+        Page::TableBTreeInteriorPage(p) => {
+            println!("interior page {}", root_page);
+            for cell in p.cells {
+				if key <= cell.row_id {
+					return find_by_primary_key(f, cell.left_child_pointer, key);
+				}
+            }
+            return find_by_primary_key(f, p.header.right_most_pointer, key);
+        }
+		_ => { panic!("expected table page, found index page"); }
+    }
+	
 }
