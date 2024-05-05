@@ -1,5 +1,5 @@
 use crate::tools::helper::{read_u16, read_u32, read_var_int};
-
+use std::cmp::{self, Ordering};
 
 pub const HEADER_SIZE: usize = 100;
 pub const PAGE_SIZE: usize = 4096;
@@ -213,7 +213,7 @@ impl BTreePageInteriorHeader {
         let cell_content_start = read_u16(buf, &mut 5);
         let fragmented_free_bytes = buf[7];
         let right_most_pointer: u32 = read_u32(buf, &mut 8);
-        println!("right most pointer {}", right_most_pointer);
+        // println!("right most pointer {}", right_most_pointer);
         BTreePageInteriorHeader {
             type_flag,
             freeblock_count,
@@ -531,4 +531,221 @@ pub fn read_record_column(serial_type: u64, buf: &[u8], offset: &mut usize) -> C
             }
         }
     }
+}
+
+impl cmp::Eq for Column {
+
+} 
+
+impl cmp::PartialEq for Column {
+	fn eq(&self, other: &Self) -> bool {
+		match self {
+			Column::NULL(_) => {
+				match other {
+					Column::NULL(_) => true,
+					_ => false,
+				}
+			},
+			Column::False(_) => {
+				match other {
+					Column::False(_) => true,
+					_ => false,
+				}
+			},
+			Column::True(_) => {
+				match other {
+					Column::True(_) => true,
+					_ => false,
+				}
+			},
+			Column::Text(t1) => {
+				match other {
+					Column::Text(t2) => true, // TODO impl eq for text
+					_ => false,
+				}
+			},
+			Column::Blob(b1) => {
+				match other {
+					Column::Text(b2) => true, // TODO impl eq for Blob
+					_ => false,
+				}
+			},
+			Column::F64(s) => {
+				match other {
+					Column::F64(o) => *s == *o,
+					Column::I8(o) => *s == *o as f64,
+					Column::I16(o) => *s == *o as f64,
+					Column::I24(o) => *s == *o as f64,
+					Column::I32(o) => *s == *o as f64,
+					Column::I48(o) => *s == *o as f64,
+					Column::I64(o) => *s == *o as f64,
+					_ => false,
+				}
+			}
+			Column::I8(s) => {
+				match other {
+					Column::NULL(_) => false,
+					Column::Blob(_) => false,
+					Column::Text(_) => false,
+					Column::True(_) => false,
+					Column::False(_) => false,
+					Column::F64(o) => *s as f64 == *o,
+					Column::I8(o) => *s == *o,
+					Column::I16(o) => *s as i16 == *o,
+					Column::I24(o) => *s as i32 == *o,
+					Column::I32(o) => *s as i32 == *o,
+					Column::I48(o) => *s as i64 == *o,
+					Column::I64(o) => *s as i64 == *o,
+				}
+			},
+			Column::I16(s) => {
+				match other {
+					Column::NULL(_) => false,
+					Column::Blob(_) => false,
+					Column::Text(_) => false,
+					Column::True(_) => false,
+					Column::False(_) => false,
+					Column::F64(o) => *s as f64 == *o,
+					Column::I8(o) => *s == *o as i16,
+					Column::I16(o) => *s == *o,
+					Column::I24(o) => *s as i32 == *o,
+					Column::I32(o) => *s as i32 == *o,
+					Column::I48(o) => *s as i64 == *o,
+					Column::I64(o) => *s as i64 == *o,
+				}
+			},
+			Column::I24(s) => {
+				match other {
+					Column::NULL(_) => false,
+					Column::Blob(_) => false,
+					Column::Text(_) => false,
+					Column::True(_) => false,
+					Column::False(_) => false,
+					Column::F64(o) => *s as f64 == *o,
+					Column::I8(o) => *s == *o as i32,
+					Column::I16(o) => *s == *o as i32,
+					Column::I24(o) => *s == *o,
+					Column::I32(o) => *s as i32 == *o,
+					Column::I48(o) => *s as i64 == *o,
+					Column::I64(o) => *s as i64 == *o,
+				}
+			},
+			Column::I32(s) => {
+				match other {
+					Column::NULL(_) => false,
+					Column::Blob(_) => false,
+					Column::Text(_) => false,
+					Column::True(_) => false,
+					Column::False(_) => false,
+					Column::F64(o) => *s as f64 == *o,
+					Column::I8(o) => *s == *o as i32,
+					Column::I16(o) => *s == *o as i32,
+					Column::I24(o) => *s == *o,
+					Column::I32(o) => *s as i32 == *o,
+					Column::I48(o) => *s as i64 == *o,
+					Column::I64(o) => *s as i64 == *o,
+				}
+			},
+			Column::I48(s) => {
+				match other {
+					Column::NULL(_) => false,
+					Column::Blob(_) => false,
+					Column::Text(_) => false,
+					Column::True(_) => false,
+					Column::False(_) => false,
+					Column::F64(o) => *s as f64 == *o,
+					Column::I8(o) => *s == *o as i64,
+					Column::I16(o) => *s == *o as i64,
+					Column::I24(o) => *s == *o as i64,
+					Column::I32(o) => *s == *o as i64,
+					Column::I48(o) => *s == *o,
+					Column::I64(o) => *s as i64 == *o,
+				}
+			},
+			Column::I64(s) => {
+				match other {
+					Column::NULL(_) => false,
+					Column::Blob(_) => false,
+					Column::Text(_) => false,
+					Column::True(_) => false,
+					Column::False(_) => false,
+					Column::F64(o) => *s as f64 == *o,
+					Column::I8(o) => *s == *o as i64,
+					Column::I16(o) => *s == *o as i64,
+					Column::I24(o) => *s == *o as i64,
+					Column::I32(o) => *s == *o as i64,
+					Column::I48(o) => *s == *o,
+					Column::I64(o) => *s as i64 == *o,
+				}
+			},
+			// _ => panic!("aaaaa"),
+		}	
+	}
+}
+
+//maybe implement partial only?
+impl cmp::Ord for Column {
+	fn cmp(&self, other: &Column) -> Ordering{
+		match self {
+			Column::NULL(_) => {
+				match other {
+					Column::NULL(_) => Ordering::Equal,
+					_ => Ordering::Less,
+				}
+			},
+			Column::True(_) => {
+				panic!("no ordering for true")
+			},
+			Column::False(_) => {
+				panic!("no ordering for false")
+			},
+			Column::Text(s) => {
+				panic!("not implemnted yet: ordering text")
+			},
+			Column::Blob(s) => {
+				panic!("not implemnted yet: ordering blob")
+			},
+			s => {
+				match other {
+					Column::True(_) => panic!("no ordering for true right side"),
+					Column::False(_) => panic!("no ordering for false right side"),
+					Column::NULL(_) => Ordering::Greater,
+					Column::F64(o) => force_cast_column_to_f64(s).partial_cmp(o).unwrap(),
+					Column::Text(_) => Ordering::Less,
+					Column::Blob(_) => Ordering::Less,
+					o => force_cast_column_to_i64(s).cmp(&force_cast_column_to_i64(o)),
+				}
+			},
+		}
+	}
+}
+
+impl cmp::PartialOrd for Column {
+	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+		Some(self.cmp(other))
+	}
+}
+
+fn force_cast_column_to_i64(c: &Column) -> i64{
+	match *c {
+		Column::I8(v)	=> v as i64,
+		Column::I16(v)	=> v as i64,
+		Column::I24(v)	=> v as i64,
+		Column::I32(v)	=> v as i64,
+		Column::I48(v)	=> v as i64,
+		Column::I64(v)	=> v as i64,
+		_ => panic!("can not cast to int"),
+	}
+}
+
+fn force_cast_column_to_f64(c: &Column) -> f64{
+	match *c {
+		Column::I8(v)	=> v as f64,
+		Column::I16(v)	=> v as f64,
+		Column::I24(v)	=> v as f64,
+		Column::I32(v)	=> v as f64,
+		Column::I48(v)	=> v as f64,
+		Column::I64(v)	=> v as f64,
+		_ => panic!("can not cast to float"),
+	}
 }

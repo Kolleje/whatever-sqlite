@@ -103,29 +103,51 @@ pub fn find_by_primary_key(f: &mut File, root_page: u32, key: u64) -> Option<Tab
     }
 }
 
-// fn find_key_in_index(f: &mut File, root_page: u32, key: Column) {
-// 	let root = read_page(f, root_page as usize);
-// 	match root {
-//         Page::IndexBTreeLeafPage(p) => {
-//             for cell in p.cells {
-// 				let index_record = Record::new(&cell.payload);
-//                 let first = index_record.body.first().unwrap();
+pub fn find_key_in_index(f: &mut File, root_page: u32, key: Column) -> Option<u64>{
+	let root = read_page(f, root_page as usize);
+	match root {
+        Page::IndexBTreeLeafPage(p) => {
+            for cell in p.cells {
+				let index_record = Record::new(&cell.payload);
+                let first = index_record.body.first().unwrap();
+				let last = index_record.body.last().unwrap();
+				if *first == key {
+					println!("found key in leaf, page {} row_id {:?}", root_page, *last);
+					return Some(force_cast_column_to_u64(last));
+				}
+            }
+			None
+        }
+        Page::IndexBTreeInteriorPage(p) => {
+            // println!("interior page {}", root_page);
+            for cell in p.cells {
+				let index_record = Record::new(&cell.payload);
+				let first = index_record.body.first().unwrap();
+				let last = index_record.body.last().unwrap();
+				if key < *first {
+					return find_key_in_index(f, cell.left_child_pointer, key);
+				}
+				if key == *first {
+					println!("found key in interior, page {} row_id {:?}", root_page, *last);
+					return Some(force_cast_column_to_u64(last));
+				}
+            }
+            return find_key_in_index(f, p.header.right_most_pointer, key);
+        }
+		_ => { panic!("expected index page, found table page"); }
+    }
+}
 
-// 				if cell.row_id == key {
-// 					// return Some(cell)
-// 				} 
-//             }
-// 			// None
-//         }
-//         Page::IndexBTreeInteriorPage(p) => {
-//             println!("interior page {}", root_page);
-//             for cell in p.cells {
-// 				if key <= cell.row_id {
-// 					return find_by_primary_key(f, cell.left_child_pointer, key);
-// 				}
-//             }
-//             return find_by_primary_key(f, p.header.right_most_pointer, key);
-//         }
-// 		_ => { panic!("expected index page, found table page"); }
-//     }
-// }
+fn force_cast_column_to_u64(c: &Column) -> u64{
+	match *c {
+		Column::I8(v)	=> v as u64,
+		Column::I16(v)	=> v as u64,
+		Column::I24(v)	=> v as u64,
+		Column::I32(v)	=> v as u64,
+		Column::I48(v)	=> v as u64,
+		Column::I64(v)	=> v as u64,
+		Column::True(_)	=> 1,
+		Column::False(_)	=> 0,
+		_ => panic!("not an int"),
+	}
+}
