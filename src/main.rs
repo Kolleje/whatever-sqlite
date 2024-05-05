@@ -502,7 +502,7 @@ fn main() {
     let mut f: File = std::fs::File::open(FILENAME).expect("failed to open file");
     parse_header(&mut f);
     read_first_page(&mut f);
-    read_page(&mut f, 2);
+    read_page(&mut f, 1);
     let mut cells: Vec<TableBTreeLeafCell> = vec![];
     // read_table(&mut f, 2, &mut cells);
     println!("Hello, world!");
@@ -558,7 +558,11 @@ fn read_first_page(f: &mut File) {
     }
 }
 
-fn read_page(f: &mut File, offset: usize) -> Page {
+fn read_page(f: &mut File, page: usize) -> Page {
+	if page == 0 {
+		panic!("read_page offset == 0");
+	}
+	let offset = page - 1;
     let mut page = [0u8; PAGE_SIZE];
     f.seek(std::io::SeekFrom::Start((PAGE_SIZE * offset) as u64))
         .expect("seek failed");
@@ -588,7 +592,7 @@ fn read_page(f: &mut File, offset: usize) -> Page {
 }
 
 fn read_table(f: &mut File, root_page: u32, cells: &mut Vec<TableBTreeLeafCell>) {
-    let root = read_page(f, root_page as usize - 1);
+    let root = read_page(f, root_page as usize);
     match root {
         Page::TableBTreeLeafPage(p) => {
             for cell in p.cells {
@@ -607,7 +611,7 @@ fn read_table(f: &mut File, root_page: u32, cells: &mut Vec<TableBTreeLeafCell>)
 }
 
 fn find_by_primary_key(f: &mut File, root_page: u32, key: u64) -> Option<TableBTreeLeafCell>{
-	let root = read_page(f, root_page as usize - 1);
+	let root = read_page(f, root_page as usize);
     match root {
         Page::TableBTreeLeafPage(p) => {
             for cell in p.cells {
@@ -628,5 +632,5 @@ fn find_by_primary_key(f: &mut File, root_page: u32, key: u64) -> Option<TableBT
         }
 		_ => { panic!("expected table page, found index page"); }
     }
-	
 }
+
