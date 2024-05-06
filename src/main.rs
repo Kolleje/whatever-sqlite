@@ -36,17 +36,20 @@ fn main() {
 		println!("not found key = {}", key);
 	}
 
-	for i in 2..10 {
+	// for i in 2..16 {
+		let i = 15;
 		let key = Column::I64(i);
-		let x = find_key_in_index(&mut f, 3225, key);
+		let x = find_keys_in_index(&mut f, 3225, key);
 		match x {
-			Some(_) => {},
+			Some(x) => {
+				println!("value= {} result vec= {:?} len= {}", i, x, x.len());
+			},
 			None => {
 				println!("did not find in index for value= {}", i);
 				panic!("aaaaaaaaaaaaaaaaaaaaaa")
 			}
 		}
-	}
+	// }
     // read_page(&mut f, 3224);
     // let testval: [u8; 9] = [0b11000000, 0b10000000, 0b10000000, 0b10000000, 0b10000000, 0b10000000, 0b10000000, 0b10000000, 0b10000000];
     // println!("{}", testval[0]);

@@ -103,7 +103,27 @@ pub fn find_by_primary_key(f: &mut File, root_page: u32, key: u64) -> Option<Tab
     }
 }
 
+pub fn find_keys_in_index(f: &mut File, root_page: u32, key: Column) -> Option<Vec<u64>>{
+	let mut result: Vec<u64> = vec![];
+	find_key_in_index_impl(f, root_page, &key, &mut result, false);
+	if result.len() > 0 {
+		Some(result)
+	} else {
+		None
+	}
+}
+
 pub fn find_key_in_index(f: &mut File, root_page: u32, key: Column) -> Option<u64>{
+	let mut result: Vec<u64> = vec![];
+	find_key_in_index_impl(f, root_page, &key, &mut result, true);
+	if result.len() > 0 {
+		Some(result[0])
+	} else {
+		None
+	}
+}
+
+fn find_key_in_index_impl(f: &mut File, root_page: u32, key: &Column, result:&mut Vec<u64>, distinct: bool){
 	let root = read_page(f, root_page as usize);
 	match root {
         Page::IndexBTreeLeafPage(p) => {
@@ -111,12 +131,14 @@ pub fn find_key_in_index(f: &mut File, root_page: u32, key: Column) -> Option<u6
 				let index_record = Record::new(&cell.payload);
                 let first = index_record.body.first().unwrap();
 				let last = index_record.body.last().unwrap();
-				if *first == key {
-					println!("found key in leaf, page {} row_id {:?}", root_page, *last);
-					return Some(force_cast_column_to_u64(last));
+				if *first == *key {
+					// println!("found key in leaf, page {} row_id {:?}, record len= {}", root_page, *last, index_record.body.len());
+					result.push(force_cast_column_to_u64(last));
+					if distinct {
+						return;
+					}
 				}
             }
-			None
         }
         Page::IndexBTreeInteriorPage(p) => {
             // println!("interior page {}", root_page);
@@ -124,15 +146,20 @@ pub fn find_key_in_index(f: &mut File, root_page: u32, key: Column) -> Option<u6
 				let index_record = Record::new(&cell.payload);
 				let first = index_record.body.first().unwrap();
 				let last = index_record.body.last().unwrap();
-				if key < *first {
-					return find_key_in_index(f, cell.left_child_pointer, key);
+				if *key < *first {
+					println!("deeper into tree {:?}", *first);
+					return find_key_in_index_impl(f, cell.left_child_pointer, key, result, distinct);
 				}
-				if key == *first {
+				if *key == *first {
 					println!("found key in interior, page {} row_id {:?}", root_page, *last);
-					return Some(force_cast_column_to_u64(last));
+					result.push(force_cast_column_to_u64(last));
+					if distinct {
+						return;
+					}
+					find_key_in_index_impl(f, cell.left_child_pointer, key, result, distinct);
 				}
             }
-            return find_key_in_index(f, p.header.right_most_pointer, key);
+            return find_key_in_index_impl(f, p.header.right_most_pointer, key, result, distinct);
         }
 		_ => { panic!("expected index page, found table page"); }
     }
