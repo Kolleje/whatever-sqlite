@@ -392,22 +392,15 @@ impl Record {
 
 #[derive(Debug)]
 pub enum Column {
-    NULL(NULL),
-    I8(i8),
-    I16(i16),
-    I24(i32),
-    I32(i32),
-    I48(i64),
+    NULL,
     I64(i64),
-    F64(f64),
-    False(bool),
-    True(bool),
+	F64(f64),
+    False,
+    True,
     Blob(Blob),
     Text(Text),
 }
 
-#[derive(Debug)]
-pub struct NULL {}
 #[derive(Debug)]
 struct Blob {
     pub size: u64,
@@ -421,71 +414,71 @@ pub struct Text {
 
 pub fn read_record_column(serial_type: u64, buf: &[u8], offset: &mut usize) -> Column {
     match serial_type {
-        0 => Column::NULL(NULL {}),
+        0 => Column::NULL,
         1 => {
             let size = 1;
             if buf.len() < *offset + size {
-                Column::I8(0i8)
+                Column::I64(0)
             } else {
-                let val: i8 = u8::from_be(buf[*offset]) as i8;
+                let val: i64 = u8::from_be(buf[*offset]) as i64;
                 *offset += size;
-                Column::I8(val)
+                Column::I64(val)
             }
         }
         2 => {
             let size = 2;
             if buf.len() < *offset + size {
-                Column::I16(0i16)
+                Column::I64(0)
             } else {
                 let mut byte_arr: [u8; 2] = [0u8; 2];
                 byte_arr.copy_from_slice(&buf[*offset..*offset + size]);
-                let val: i16 = u16::from_be_bytes(byte_arr) as i16;
+                let val: i64 = u16::from_be_bytes(byte_arr) as i64;
                 *offset += size;
-                Column::I16(val)
+                Column::I64(val)
             }
         }
         3 => {
             let size = 3;
             if buf.len() < *offset + size {
-                Column::I24(0i32)
+                Column::I64(0)
             } else {
                 let mut byte_arr: [u8; 4] = [0u8; 4];
                 byte_arr[1..].copy_from_slice(&buf[*offset..*offset + size]);
-                let val: i32 = u32::from_be_bytes(byte_arr) as i32;
+                let val: i64 = u32::from_be_bytes(byte_arr) as i64;
                 //TODO: this cast will not result in the correct value
                 *offset += size;
-                Column::I24(val)
+                Column::I64(val)
             }
         }
         4 => {
             let size = 4;
             if buf.len() < *offset + size {
-                Column::I32(0i32)
+                Column::I64(0)
             } else {
                 let mut byte_arr: [u8; 4] = [0u8; 4];
                 byte_arr.copy_from_slice(&buf[*offset..*offset + size]);
-                let val: i32 = u32::from_be_bytes(byte_arr) as i32;
+                let val: i64 = u32::from_be_bytes(byte_arr) as i64;
                 *offset += size;
-                Column::I32(val)
+                Column::I64(val)
             }
         }
         5 => {
             let size = 6;
             if buf.len() < *offset + size {
-                Column::I48(0i64)
+                Column::I64(0)
             } else {
                 let mut byte_arr: [u8; 8] = [0u8; 8];
                 byte_arr[2..].copy_from_slice(&buf[*offset..*offset + size]);
                 let val: i64 = u64::from_be_bytes(byte_arr) as i64;
                 //TODO: this cast will not result in the correct value
                 *offset += size;
-                Column::I48(val)
+                Column::I64(val)
             }
         }
         6 => {
             let size = 8;
             if buf.len() < *offset + size {
-                Column::I64(0i64)
+                Column::I64(0)
             } else {
                 let mut byte_arr: [u8; 8] = [0u8; 8];
                 byte_arr.copy_from_slice(&buf[*offset..*offset + size]);
@@ -506,8 +499,8 @@ pub fn read_record_column(serial_type: u64, buf: &[u8], offset: &mut usize) -> C
                 Column::F64(val)
             }
         }
-        8 => Column::False(false),
-        9 => Column::True(true),
+        8 => Column::False,
+        9 => Column::True,
         10 => panic!("unexpected record serial type 10"),
         11 => panic!("unexpected record serial type 11"),
         x => {
@@ -540,21 +533,21 @@ impl cmp::Eq for Column {
 impl cmp::PartialEq for Column {
 	fn eq(&self, other: &Self) -> bool {
 		match self {
-			Column::NULL(_) => {
+			Column::NULL => {
 				match other {
-					Column::NULL(_) => true,
+					Column::NULL => true,
 					_ => false,
 				}
 			},
-			Column::False(_) => {
+			Column::False => {
 				match other {
-					Column::False(_) => true,
+					Column::False => true,
 					_ => false,
 				}
 			},
-			Column::True(_) => {
+			Column::True => {
 				match other {
-					Column::True(_) => true,
+					Column::True => true,
 					_ => false,
 				}
 			},
@@ -573,108 +566,18 @@ impl cmp::PartialEq for Column {
 			Column::F64(s) => {
 				match other {
 					Column::F64(o) => *s == *o,
-					Column::I8(o) => *s == *o as f64,
-					Column::I16(o) => *s == *o as f64,
-					Column::I24(o) => *s == *o as f64,
-					Column::I32(o) => *s == *o as f64,
-					Column::I48(o) => *s == *o as f64,
 					Column::I64(o) => *s == *o as f64,
 					_ => false,
 				}
 			}
-			Column::I8(s) => {
-				match other {
-					Column::NULL(_) => false,
-					Column::Blob(_) => false,
-					Column::Text(_) => false,
-					Column::True(_) => false,
-					Column::False(_) => false,
-					Column::F64(o) => *s as f64 == *o,
-					Column::I8(o) => *s == *o,
-					Column::I16(o) => *s as i16 == *o,
-					Column::I24(o) => *s as i32 == *o,
-					Column::I32(o) => *s as i32 == *o,
-					Column::I48(o) => *s as i64 == *o,
-					Column::I64(o) => *s as i64 == *o,
-				}
-			},
-			Column::I16(s) => {
-				match other {
-					Column::NULL(_) => false,
-					Column::Blob(_) => false,
-					Column::Text(_) => false,
-					Column::True(_) => false,
-					Column::False(_) => false,
-					Column::F64(o) => *s as f64 == *o,
-					Column::I8(o) => *s == *o as i16,
-					Column::I16(o) => *s == *o,
-					Column::I24(o) => *s as i32 == *o,
-					Column::I32(o) => *s as i32 == *o,
-					Column::I48(o) => *s as i64 == *o,
-					Column::I64(o) => *s as i64 == *o,
-				}
-			},
-			Column::I24(s) => {
-				match other {
-					Column::NULL(_) => false,
-					Column::Blob(_) => false,
-					Column::Text(_) => false,
-					Column::True(_) => false,
-					Column::False(_) => false,
-					Column::F64(o) => *s as f64 == *o,
-					Column::I8(o) => *s == *o as i32,
-					Column::I16(o) => *s == *o as i32,
-					Column::I24(o) => *s == *o,
-					Column::I32(o) => *s as i32 == *o,
-					Column::I48(o) => *s as i64 == *o,
-					Column::I64(o) => *s as i64 == *o,
-				}
-			},
-			Column::I32(s) => {
-				match other {
-					Column::NULL(_) => false,
-					Column::Blob(_) => false,
-					Column::Text(_) => false,
-					Column::True(_) => false,
-					Column::False(_) => false,
-					Column::F64(o) => *s as f64 == *o,
-					Column::I8(o) => *s == *o as i32,
-					Column::I16(o) => *s == *o as i32,
-					Column::I24(o) => *s == *o,
-					Column::I32(o) => *s as i32 == *o,
-					Column::I48(o) => *s as i64 == *o,
-					Column::I64(o) => *s as i64 == *o,
-				}
-			},
-			Column::I48(s) => {
-				match other {
-					Column::NULL(_) => false,
-					Column::Blob(_) => false,
-					Column::Text(_) => false,
-					Column::True(_) => false,
-					Column::False(_) => false,
-					Column::F64(o) => *s as f64 == *o,
-					Column::I8(o) => *s == *o as i64,
-					Column::I16(o) => *s == *o as i64,
-					Column::I24(o) => *s == *o as i64,
-					Column::I32(o) => *s == *o as i64,
-					Column::I48(o) => *s == *o,
-					Column::I64(o) => *s as i64 == *o,
-				}
-			},
 			Column::I64(s) => {
 				match other {
-					Column::NULL(_) => false,
+					Column::NULL => false,
 					Column::Blob(_) => false,
 					Column::Text(_) => false,
-					Column::True(_) => false,
-					Column::False(_) => false,
+					Column::True => false,
+					Column::False => false,
 					Column::F64(o) => *s as f64 == *o,
-					Column::I8(o) => *s == *o as i64,
-					Column::I16(o) => *s == *o as i64,
-					Column::I24(o) => *s == *o as i64,
-					Column::I32(o) => *s == *o as i64,
-					Column::I48(o) => *s == *o,
 					Column::I64(o) => *s as i64 == *o,
 				}
 			},
@@ -687,16 +590,16 @@ impl cmp::PartialEq for Column {
 impl cmp::Ord for Column {
 	fn cmp(&self, other: &Column) -> Ordering{
 		match self {
-			Column::NULL(_) => {
+			Column::NULL => {
 				match other {
-					Column::NULL(_) => Ordering::Equal,
+					Column::NULL => Ordering::Equal,
 					_ => Ordering::Less,
 				}
 			},
-			Column::True(_) => {
+			Column::True => {
 				panic!("no ordering for true")
 			},
-			Column::False(_) => {
+			Column::False => {
 				panic!("no ordering for false")
 			},
 			Column::Text(s) => {
@@ -707,9 +610,9 @@ impl cmp::Ord for Column {
 			},
 			s => {
 				match other {
-					Column::True(_) => panic!("no ordering for true right side"),
-					Column::False(_) => panic!("no ordering for false right side"),
-					Column::NULL(_) => Ordering::Greater,
+					Column::True => panic!("no ordering for true right side"),
+					Column::False => panic!("no ordering for false right side"),
+					Column::NULL => Ordering::Greater,
 					Column::F64(o) => force_cast_column_to_f64(s).partial_cmp(o).unwrap(),
 					Column::Text(_) => Ordering::Less,
 					Column::Blob(_) => Ordering::Less,
@@ -728,11 +631,6 @@ impl cmp::PartialOrd for Column {
 
 fn force_cast_column_to_i64(c: &Column) -> i64{
 	match *c {
-		Column::I8(v)	=> v as i64,
-		Column::I16(v)	=> v as i64,
-		Column::I24(v)	=> v as i64,
-		Column::I32(v)	=> v as i64,
-		Column::I48(v)	=> v as i64,
 		Column::I64(v)	=> v as i64,
 		_ => panic!("can not cast to int"),
 	}
@@ -740,11 +638,6 @@ fn force_cast_column_to_i64(c: &Column) -> i64{
 
 fn force_cast_column_to_f64(c: &Column) -> f64{
 	match *c {
-		Column::I8(v)	=> v as f64,
-		Column::I16(v)	=> v as f64,
-		Column::I24(v)	=> v as f64,
-		Column::I32(v)	=> v as f64,
-		Column::I48(v)	=> v as f64,
 		Column::I64(v)	=> v as f64,
 		_ => panic!("can not cast to float"),
 	}

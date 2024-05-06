@@ -140,14 +140,9 @@ pub fn find_key_in_index(f: &mut File, root_page: u32, key: Column) -> Option<u6
 
 fn force_cast_column_to_u64(c: &Column) -> u64{
 	match *c {
-		Column::I8(v)	=> v as u64,
-		Column::I16(v)	=> v as u64,
-		Column::I24(v)	=> v as u64,
-		Column::I32(v)	=> v as u64,
-		Column::I48(v)	=> v as u64,
 		Column::I64(v)	=> v as u64,
-		Column::True(_)	=> 1,
-		Column::False(_)	=> 0,
+		Column::True	=> 1,
+		Column::False	=> 0,
 		_ => panic!("not an int"),
 	}
 }
