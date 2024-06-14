@@ -173,3 +173,63 @@ fn force_cast_column_to_u64(c: &Column) -> u64{
 		_ => panic!("not an int"),
 	}
 }
+
+pub fn find_by_primary_key_list(f: &mut File, root_page: u32, key_list: &Vec<u64>) -> Option<Vec<TableBTreeLeafCell>>{
+	if key_list.len() == 0 {
+		return None;
+	}
+	let mut results: Vec<TableBTreeLeafCell> = vec![];
+	let mut key_list_sorted = key_list.clone();
+	let mut current_index = 0;
+	key_list_sorted.sort();
+	_find_by_primary_key_list(f, root_page, &key_list_sorted, &mut current_index, &mut results);
+
+	if results.len() == 0 {
+		None
+	} else {
+		Some(results)
+	}
+}
+
+fn _find_by_primary_key_list(f: &mut File, root_page: u32, key_list_sorted: &Vec<u64>, current_index: &mut usize, results: &mut Vec<TableBTreeLeafCell>){
+	let root = read_page(f, root_page as usize);
+    match root {
+        Page::TableBTreeLeafPage(p) => {
+			let mut current_key = key_list_sorted[*current_index];
+            for cell in p.cells {
+				if cell.row_id < current_key {
+					continue;
+				}
+                if cell.row_id == current_key {
+					results.push(cell);
+				}
+				*current_index += 1;
+				if key_list_sorted.len() <= *current_index {
+					return;
+				}
+				current_key = key_list_sorted[*current_index];
+            }
+        }
+        Page::TableBTreeInteriorPage(p) => {
+            println!("interior page {}", root_page);
+			let mut current_key = key_list_sorted[*current_index];
+            for cell in p.cells {
+				if current_key <= cell.row_id {
+					_find_by_primary_key_list(f, cell.left_child_pointer, key_list_sorted, current_index, results);
+					// return find_by_primary_key(f, cell.left_child_pointer, key);
+					if key_list_sorted.len() <= *current_index {
+						return;
+					}
+					current_key = key_list_sorted[*current_index];
+				}
+            }
+			_find_by_primary_key_list(f, p.header.right_most_pointer, key_list_sorted, current_index, results);
+            // find_by_primary_key(f, p.header.right_most_pointer, key);
+        }
+		_ => { panic!("expected table page, found index page"); }
+    }
+}
+
+// fn table_find_rows_with_key_set(f: &mut File, root_page: u32, key: &Column, result:&mut Vec<u64>){
+// 	Option<TableBTreeLeafCell>
+// }
